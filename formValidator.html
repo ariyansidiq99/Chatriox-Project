@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Validator — Chatriox</title>
+  <style>
+
+    /* =============================================================
+       BASE
+       ============================================================= */
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #F8FAFF;
+    }
+
+    h1 {
+      color: #0F172A;
+      margin: 0 0 8px;
+    }
+
+    p {
+      color: #64748B;
+      margin: 0 0 32px;
+    }
+
+    /* =============================================================
+       FORM FIELDS
+       ============================================================= */
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #0F172A;
+    }
+
+    .field__input {
+      padding: 10px 14px;
+      border: 2px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 150ms;
+    }
+
+    .field__input:focus    { border-color: #1A3FAA; }
+    .field__input.is-valid { border-color: #15803D; }
+    .field__input.is-invalid { border-color: #B91C1C; }
+
+    .field__error {
+      font-size: 0.8rem;
+      color: #B91C1C;
+      min-height: 18px;
+    }
+
+    .field__hint {
+      font-size: 0.8rem;
+      color: #64748B;
+    }
+
+    /* =============================================================
+       PASSWORD STRENGTH BAR
+       ============================================================= */
+
+    .strength-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: #E2E8F0;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .strength-bar__fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0;
+      transition: width 300ms, background 300ms;
+    }
+
+    /* =============================================================
+       SUBMIT BUTTON
+       ============================================================= */
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #1A3FAA;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 150ms;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* =============================================================
+       SUCCESS MESSAGE
+       ============================================================= */
+
+    .success-msg {
+      display: none;
+      text-align: center;
+      padding: 24px;
+      background: #F0FDF4;
+      border: 1px solid #86EFAC;
+      border-radius: 8px;
+      color: #15803D;
+      font-weight: 600;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <h1>Get Started Free</h1>
+  <p>Create your Chatriox account. No credit card required.</p>
+
+  <form id="signupForm" novalidate>
+
+    <div class="field">
+      <label for="name">Full Name</label>
+      <input class="field__input" type="text" id="name" autocomplete="name" placeholder="Ahmad Khan">
+      <span class="field__error" id="nameError"></span>
+    </div>
+
+    <div class="field">
+      <label for="email">Email Address</label>
+      <input class="field__input" type="email" id="email" autocomplete="email" placeholder="ahmad@example.com">
+      <span class="field__error" id="emailError"></span>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input class="field__input" type="password" id="password" autocomplete="new-password" placeholder="Min 8 characters">
+      <div class="strength-bar">
+        <div class="strength-bar__fill" id="strengthFill"></div>
+      </div>
+      <span class="field__hint" id="strengthLabel">Enter a password</span>
+      <span class="field__error" id="passwordError"></span>
+    </div>
+
+    <div class="field">
+      <label for="confirm">Confirm Password</label>
+      <input class="field__input" type="password" id="confirm" autocomplete="new-password" placeholder="Repeat your password">
+      <span class="field__error" id="confirmError"></span>
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn" disabled>Create Account</button>
+
+  </form>
+
+  <div class="success-msg" id="successMsg">Account created! Welcome to Chatriox.</div>
+
+  <script>
+
+    /* ================================================================
+       ELEMENT REFERENCES
+       ================================================================ */
+
+    const nameInput  = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const passInput  = document.getElementById('password');
+    const confInput  = document.getElementById('confirm');
+    const submitBtn  = document.getElementById('submitBtn');
+
+    const nameError  = document.getElementById('nameError');
+    const emailError = document.getElementById('emailError');
+    const passError  = document.getElementById('passwordError');
+    const confError  = document.getElementById('confirmError');
+
+    const strengthFill  = document.getElementById('strengthFill');
+    const strengthLabel = document.getElementById('strengthLabel');
+
+    /* ================================================================
+       VALIDATION RULES
+       Each rule returns an error string, or '' if valid.
+       ================================================================ */
+
+    const rules = {
+      name:     v => v.trim().length >= 2 ? '' : 'Name must be at least 2 characters',
+      email:    v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'Enter a valid email address',
+      password: v => v.length >= 8 ? '' : 'Password must be at least 8 characters',
+      confirm:  v => v === passInput.value ? '' : 'Passwords do not match',
+    };
+
+    /* ================================================================
+       FIELD STATE HELPER
+       Applies is-valid / is-invalid classes and shows error text.
+       ================================================================ */
+
+    function setFieldState(input, errorEl, error) {
+      const hasValue = input.value.length > 0;
+      input.classList.toggle('is-valid',   !error && hasValue);
+      input.classList.toggle('is-invalid',  !!error && hasValue);
+      errorEl.textContent = error;
+    }
+
+    /* ================================================================
+       PASSWORD STRENGTH
+       ================================================================ */
+
+    const STRENGTH_LEVELS = [
+      { width: '0%',   color: '#E2E8F0', text: 'Enter a password' },
+      { width: '25%',  color: '#B91C1C', text: 'Weak'             },
+      { width: '50%',  color: '#D97706', text: 'Fair'             },
+      { width: '75%',  color: '#1A3FAA', text: 'Strong'           },
+      { width: '90%',  color: '#15803D', text: 'Very Strong'      },
+      { width: '100%', color: '#15803D', text: 'Excellent'        },
+    ];
+
+    function getStrengthScore(password) {
+      let score = 0;
+      if (password.length >= 8)            score++;
+      if (password.length >= 12)           score++;
+      if (/[A-Z]/.test(password))          score++;
+      if (/[0-9]/.test(password))          score++;
+      if (/[^a-zA-Z0-9]/.test(password))  score++;
+      return score;
+    }
+
+    function updateStrengthBar(password) {
+      const score = getStrengthScore(password);
+      const level = STRENGTH_LEVELS[Math.min(score, STRENGTH_LEVELS.length - 1)];
+
+      strengthFill.style.width      = password.length ? level.width : '0%';
+      strengthFill.style.background = level.color;
+      strengthLabel.textContent     = password.length ? level.text : 'Enter a password';
+    }
+
+    /* ================================================================
+       SUBMIT BUTTON STATE
+       Enabled only when all fields are filled and valid.
+       ================================================================ */
+
+    function updateSubmitState() {
+      const allFilled = [nameInput, emailInput, passInput, confInput]
+        .every(i => i.value.length > 0);
+      const allValid  = [nameInput, emailInput, passInput, confInput]
+        .every(i => i.classList.contains('is-valid'));
+
+      submitBtn.disabled = !(allFilled && allValid);
+    }
+
+    /* ================================================================
+       EVENT LISTENERS
+       ================================================================ */
+
+    nameInput.addEventListener('input', () => {
+      setFieldState(nameInput, nameError, rules.name(nameInput.value));
+      updateSubmitState();
+    });
+
+    emailInput.addEventListener('input', () => {
+      setFieldState(emailInput, emailError, rules.email(emailInput.value));
+      updateSubmitState();
+    });
+
+    passInput.addEventListener('input', () => {
+      updateStrengthBar(passInput.value);
+      setFieldState(passInput, passError, rules.password(passInput.value));
+      // Re-validate confirm field live when password changes
+      if (confInput.value) {
+        setFieldState(confInput, confError, rules.confirm(confInput.value));
+      }
+      updateSubmitState();
+    });
+
+    confInput.addEventListener('input', () => {
+      setFieldState(confInput, confError, rules.confirm(confInput.value));
+      updateSubmitState();
+    });
+
+    /* ================================================================
+       FORM SUBMISSION
+       ================================================================ */
+
+    document.getElementById('signupForm').addEventListener('submit', e => {
+      e.preventDefault();
+      document.getElementById('signupForm').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
+    });
+
+  </script>
+
+</body>
+</html>

@@ -1,140 +1,151 @@
-/* main.js */
+/* =============================================================================
+   MAIN.JS — Chatriox Landing Page
+   Sections:
+     1. Dark Mode Toggle
+     2. Hamburger Menu
+     3. Smooth Scroll
+     4. Scroll Fade Animations
+     5. Animated Stat Counters
+   ============================================================================= */
 
-/* ── Dark mode toggle ───────────────────────────── */
-const html = document.documentElement;
-const themeToggle = document.getElementById("themeToggle");
+/* =============================================================================
+   1. DARK MODE TOGGLE
+   ============================================================================= */
 
-if (localStorage.getItem("theme") === "dark") {
-  html.dataset.theme = "dark";
+const html        = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+
+// Restore saved theme preference on load
+if (localStorage.getItem('theme') === 'dark') {
+  html.dataset.theme = 'dark';
 }
 
-themeToggle.addEventListener("click", () => {
-  html.dataset.theme = html.dataset.theme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", html.dataset.theme);
+themeToggle.addEventListener('click', () => {
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  localStorage.setItem('theme', html.dataset.theme);
 });
 
+/* =============================================================================
+   2. HAMBURGER MENU
+   ============================================================================= */
 
-/* ── Hamburger menu ─────────────────────────────── */
-const hamburger = document.getElementById("hamburger");
-const mobileMenu = document.getElementById("mobileMenu");
+const hamburger  = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobileMenu');
 
-hamburger.addEventListener("click", () => {
-  const isOpen = hamburger.getAttribute("aria-expanded") === "true";
+hamburger.addEventListener('click', () => {
+  const isOpen = hamburger.getAttribute('aria-expanded') === 'true';
 
-  hamburger.setAttribute("aria-expanded", !isOpen);
-  mobileMenu.setAttribute("aria-hidden", isOpen);
-  mobileMenu.classList.toggle("is-open");
+  hamburger.setAttribute('aria-expanded', String(!isOpen));
+  mobileMenu.setAttribute('aria-hidden', String(isOpen));
+  mobileMenu.classList.toggle('is-open');
 });
 
-mobileMenu.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => {
-    hamburger.setAttribute("aria-expanded", "false");
-    mobileMenu.setAttribute("aria-hidden", "true");
-    mobileMenu.classList.remove("is-open");
+// Close menu when any mobile nav link is clicked
+mobileMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    hamburger.setAttribute('aria-expanded', 'false');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    mobileMenu.classList.remove('is-open');
   });
 });
 
+/* =============================================================================
+   3. SMOOTH SCROLL
+   ============================================================================= */
 
-/* ── Smooth scroll ──────────────────────────────── */
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener("click", (e) => {
-
-    const target = document.querySelector(anchor.getAttribute("href"));
+  anchor.addEventListener('click', e => {
+    const target = document.querySelector(anchor.getAttribute('href'));
 
     if (target) {
       e.preventDefault();
-      target.scrollIntoView({ behavior: "smooth" });
+      target.scrollIntoView({ behavior: 'smooth' });
     }
-
   });
 });
 
+/* =============================================================================
+   4. SCROLL FADE ANIMATIONS
+   ============================================================================= */
 
-/* ── Scroll fade animations ─────────────────────── */
-const observer = new IntersectionObserver(entries => {
-
-  entries.forEach(entry => {
-
-    if (entry.isIntersecting) {
-      entry.target.classList.add("is-visible");
-    }
-
-  });
-
-}, { threshold: 0.1 });
+const fadeObserver = new IntersectionObserver(
+  entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+      }
+    });
+  },
+  { threshold: 0.1 }
+);
 
 document
-  .querySelectorAll(".feature-card, .testimonial-card, .plan")
-  .forEach(el => observer.observe(el));
+  .querySelectorAll('.feature-card, .testimonial-card, .plan')
+  .forEach(el => fadeObserver.observe(el));
 
+/* =============================================================================
+   5. ANIMATED STAT COUNTERS
+   ============================================================================= */
 
-
-/* ── Animated Stat Counters ─────────────────────── */
-
-function animateCounter(element, target, duration = 2000, suffix = "") {
-
-  const startTime = performance.now();
-  const startValue = 0;
-
-  const prefersReduced =
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  if (prefersReduced) {
+/**
+ * Animates a numeric counter from 0 to a target value.
+ *
+ * @param {HTMLElement} element  - The DOM element to update
+ * @param {number}      target   - The final numeric value
+ * @param {number}      duration - Animation duration in milliseconds
+ * @param {string}      suffix   - String appended after the number (e.g. '%', 'K')
+ */
+function animateCounter(element, target, duration = 2000, suffix = '') {
+  // Respect user's motion preferences
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     element.textContent = target + suffix;
     return;
   }
 
-  function update(currentTime) {
+  const startTime = performance.now();
 
-    const elapsed = currentTime - startTime;
+  function update(currentTime) {
+    const elapsed  = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
-    const eased = 1 - Math.pow(1 - progress, 3);
-
-    const current =
-      Math.floor(startValue + (target - startValue) * eased);
+    // Ease-out cubic: decelerates toward the end
+    const eased   = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(target * eased);
 
     element.textContent = current + suffix;
 
     if (progress < 1) {
       requestAnimationFrame(update);
     } else {
-      element.textContent = target + suffix;
+      element.textContent = target + suffix; // Ensure exact final value
     }
-
   }
 
   requestAnimationFrame(update);
-
 }
 
+// Trigger counters once the dashboard mockup scrolls into view
+const dashboardMockup = document.querySelector('.dashboard-mockup');
 
-/* ── Trigger counter when hero enters screen ────── */
+if (dashboardMockup) {
+  const statsObserver = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const statValues = document.querySelectorAll('.stat-val');
 
-const statsSection = document.querySelector(".dashboard-mockup");
+          if (statValues[0]) animateCounter(statValues[0], 98,  1500, '%');
+          if (statValues[1]) animateCounter(statValues[1], 4,   1800, '.2x');
+          if (statValues[2]) animateCounter(statValues[2], 12,  2000, 'K');
 
-if (statsSection) {
+          // Only animate once
+          statsObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.3 }
+  );
 
-  const statsObserver = new IntersectionObserver(entries => {
-
-    entries.forEach(entry => {
-
-      if (entry.isIntersecting) {
-
-        const statValues = document.querySelectorAll(".stat-val");
-
-        if (statValues[0]) animateCounter(statValues[0], 98, 1500, "%");
-        if (statValues[1]) animateCounter(statValues[1], 4, 1800, ".2x");
-        if (statValues[2]) animateCounter(statValues[2], 12, 2000, "K");
-
-        statsObserver.unobserve(entry.target);
-
-      }
-
-    });
-
-  }, { threshold: 0.3 });
-
-  statsObserver.observe(statsSection);
-
+  statsObserver.observe(dashboardMockup);
 }
